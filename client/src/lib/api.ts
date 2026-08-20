@@ -146,6 +146,11 @@ export const aqiApi = {
   getCity: (name: string) => request<any>(`/aqi/city/${encodeURIComponent(name)}`),
 };
 
+// ─── WQI API ───
+export const wqiApi = {
+  getStations: () => request<{ stations: any[] }>('/wqi/stations'),
+};
+
 // ─── Users API ───
 export const usersApi = {
   getProfile: (id: string) => request<{ user: any }>(`/users/${id}/profile`),

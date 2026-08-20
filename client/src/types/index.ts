@@ -80,6 +80,28 @@ export interface AqiCity {
   };
 }
 
+export interface WqiStation {
+  id: string | number;
+  name: string;
+  waterBody: string;
+  city: string;
+  lat: number;
+  lng: number;
+  wqi: number | null;
+  category: string;
+  color: string;
+  suitability: string;
+  healthAdvisory: string;
+  parameters: {
+    ph?: number | null;
+    tds?: number | null;
+    turbidity?: number | null;
+    do?: number | null;
+    bod?: number | null;
+  };
+  updatedAt: string;
+}
+
 export interface Pagination {
   page: number;
   limit: number;
