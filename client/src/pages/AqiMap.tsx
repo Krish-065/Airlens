@@ -7,7 +7,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
 import type { AqiCity, WqiStation, Report } from '@/types';
 import { HiOutlineLocationMarker, HiOutlineCalendar } from 'react-icons/hi';
-import { Search, Image as ImageIcon, Droplets, Wind, ShieldAlert } from 'lucide-react';
+import { Search, Image as ImageIcon, Droplets, Wind, ShieldAlert, X } from 'lucide-react';
 
 const INDIA_CENTER: [number, number] = [22.5, 79.0];
 const INDIA_ZOOM = 5;
@@ -185,6 +185,35 @@ export default function AqiMap() {
     return matchesSearch;
   });
 
+  // Auto-select match on typing or enter
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val);
+    if (!val.trim()) return;
+
+    if (domainMode === 'AIR') {
+      const match = cities.find((c) => c.name.toLowerCase().includes(val.toLowerCase()));
+      if (match) setSelectedCity(match);
+    } else {
+      const match = wqiStations.find(
+        (st) =>
+          st.name.toLowerCase().includes(val.toLowerCase()) ||
+          st.city.toLowerCase().includes(val.toLowerCase()) ||
+          st.waterBody.toLowerCase().includes(val.toLowerCase())
+      );
+      if (match) setSelectedWqiStation(match);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      if (domainMode === 'AIR' && filteredCities.length > 0) {
+        setSelectedCity(filteredCities[0]);
+      } else if (domainMode === 'WATER' && filteredWqiStations.length > 0) {
+        setSelectedWqiStation(filteredWqiStations[0]);
+      }
+    }
+  };
+
   const getMapCenter = (): [number, number] => {
     if (domainMode === 'AIR' && selectedCity) return [selectedCity.lat, selectedCity.lng];
     if (domainMode === 'WATER' && selectedWqiStation) return [selectedWqiStation.lat, selectedWqiStation.lng];
@@ -245,16 +274,26 @@ export default function AqiMap() {
             </button>
           </div>
 
+          {/* Sidebar Search Bar */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={domainMode === 'AIR' ? 'Search AQI station...' : 'Search river/lake station...'}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-satoshi bg-white"
+              onChange={(e) => handleSearchChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={domainMode === 'AIR' ? 'Search city or station...' : 'Search river or lake...'}
+              className="w-full pl-10 pr-8 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-satoshi bg-white shadow-sm"
               style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
             />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
 
           {/* Filter pills */}
@@ -364,6 +403,30 @@ export default function AqiMap() {
 
       {/* ─── MAP CENTER: Interactive Leaflet Visualization ─── */}
       <div className="flex-1 h-full relative z-10">
+
+        {/* Floating Top Search Bar (Visible on Mobile & Desktop) */}
+        <div className="absolute top-4 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-20">
+          <div className="relative shadow-xl rounded-2xl">
+            <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={domainMode === 'AIR' ? '🔍 Search Indian city (e.g. Delhi, Mumbai)...' : '🔍 Search river or lake...'}
+              className="w-full pl-10 pr-9 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary text-sm font-satoshi bg-white/95 backdrop-blur-md shadow-lg text-slate-900"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 bg-slate-100 p-1 rounded-full"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+
         <MapContainer
           center={INDIA_CENTER}
           zoom={INDIA_ZOOM}
@@ -523,6 +586,42 @@ export default function AqiMap() {
                   <div className="text-[10px] text-slate-500">NO₂</div>
                   <div className="text-xs font-bold">{selectedCity.pollutants?.no2 ?? 'N/A'}</div>
                 </div>
+              </div>
+
+              {/* Latest Uploaded Reports */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-800" style={{ color: 'var(--text)' }}>
+                  📸 Community Reports near {selectedCity.name}
+                </h4>
+
+                {cityReports.length === 0 ? (
+                  <div className="p-6 rounded-xl border border-dashed text-center text-xs font-satoshi" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                    No reports filed for this city yet.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {cityReports.map((r) => (
+                      <div
+                        key={r.id}
+                        onClick={() => navigate(`/report/${r.id}`)}
+                        className="glass-card p-3 rounded-xl flex gap-3 cursor-pointer hover:bg-mint/35 transition-all"
+                      >
+                        <img
+                          src={r.imageUrl}
+                          alt={r.title}
+                          className="w-16 h-16 rounded-lg object-cover shrink-0"
+                        />
+                        <div className="overflow-hidden flex flex-col justify-between">
+                          <h5 className="font-bold text-xs line-clamp-2" style={{ color: 'var(--text)' }}>{r.title}</h5>
+                          <div className="flex items-center gap-3 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                            <span className="flex items-center gap-0.5"><HiOutlineCalendar /> {new Date(r.reportDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                            <span>❤️ {r.likeCount}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
