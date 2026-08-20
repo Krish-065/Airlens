@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Production builds
+dist/
+**/dist/
+
+# Environment variables (contains secret API keys)
+.env
+**/.env
+
+# Uploads and temporary files
+uploads/
+**/uploads/
+
+# Logs & System
+*.log
+.DS_Store
